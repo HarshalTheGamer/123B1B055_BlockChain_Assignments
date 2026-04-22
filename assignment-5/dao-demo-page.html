@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Modern DAO governance dashboard for proposal creation, voting, and execution">
+    <title>Assignment 5 | DAO Governance Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #08111f;
+            --bg-soft: #0f1c31;
+            --panel: rgba(11, 24, 43, 0.78);
+            --panel-strong: rgba(14, 30, 53, 0.95);
+            --line: rgba(157, 184, 255, 0.16);
+            --line-strong: rgba(157, 184, 255, 0.28);
+            --text: #f4f8ff;
+            --muted: #9fb0d0;
+            --blue: #69b7ff;
+            --cyan: #6de2ff;
+            --mint: #88f1c7;
+            --gold: #ffcf73;
+            --rose: #ff8ca3;
+            --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+            --radius: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            color: var(--text);
+            font-family: "DM Sans", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(109, 226, 255, 0.2), transparent 24%),
+                radial-gradient(circle at top right, rgba(255, 140, 163, 0.18), transparent 22%),
+                radial-gradient(circle at 20% 80%, rgba(136, 241, 199, 0.12), transparent 24%),
+                linear-gradient(180deg, #09111e 0%, #07101b 40%, #050b14 100%);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 34px 34px;
+            pointer-events: none;
+            mask-image: linear-gradient(180deg, rgba(255,255,255,0.45), transparent 75%);
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .shell {
+            width: min(1180px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 24px 0 48px;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 14px 18px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(8, 17, 31, 0.72);
+            backdrop-filter: blur(18px);
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 18px;
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: "Space Grotesk", sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            font-size: 1.15rem;
+            background: linear-gradient(135deg, rgba(105, 183, 255, 0.28), rgba(255, 140, 163, 0.22));
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-link {
+            color: var(--muted);
+            padding: 10px 14px;
+            border-radius: 999px;
+            transition: 0.25s ease;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .wallet {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .wallet-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--mint);
+            box-shadow: 0 0 16px rgba(136, 241, 199, 0.75);
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 24px;
+            padding: 34px 0 26px;
+            align-items: stretch;
+        }
+
+        .hero-card,
+        .side-card,
+        .panel,
+        .proposal-card,
+        .workflow-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow);
+        }
+
+        .hero-card {
+            padding: 34px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-card::after {
+            content: "";
+            position: absolute;
+            width: 240px;
+            height: 240px;
+            right: -80px;
+            top: -80px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(109, 226, 255, 0.24), transparent 70%);
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(109, 226, 255, 0.1);
+            border: 1px solid rgba(109, 226, 255, 0.18);
+            color: var(--cyan);
+            font-size: 0.82rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        h1, h2, h3 {
+            font-family: "Space Grotesk", sans-serif;
+            margin: 0;
+        }
+
+        h1 {
+            font-size: clamp(2.3rem, 5vw, 4.4rem);
+            line-height: 0.98;
+            margin: 18px 0 16px;
+            max-width: 10ch;
+        }
+
+        .hero-copy {
+            color: var(--muted);
+            font-size: 1.03rem;
+            line-height: 1.7;
+            max-width: 58ch;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            border: none;
+            cursor: pointer;
+            border-radius: 16px;
+            padding: 13px 18px;
+            font: inherit;
+            font-weight: 700;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            color: #03101d;
+            background: linear-gradient(135deg, var(--cyan), var(--mint));
+            box-shadow: 0 16px 30px rgba(109, 226, 255, 0.18);
+        }
+
+        .btn-secondary {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--line);
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 28px;
+        }
+
+        .metric {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .metric-label {
+            color: var(--muted);
+            font-size: 0.86rem;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 1.65rem;
+            font-weight: 700;
+        }
+
+        .side-stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        .side-card {
+            padding: 22px;
+        }
+
+        .token-ring {
+            width: 150px;
+            aspect-ratio: 1;
+            margin: 12px auto 18px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background:
+                radial-gradient(circle at center, rgba(8, 17, 31, 1) 48%, transparent 49%),
+                conic-gradient(from 220deg, var(--cyan), var(--blue), var(--mint), var(--gold), var(--cyan));
+            box-shadow: inset 0 0 22px rgba(255, 255, 255, 0.08), 0 0 30px rgba(105, 183, 255, 0.12);
+        }
+
+        .token-core {
+            width: 102px;
+            height: 102px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: var(--bg-soft);
+            border: 1px solid var(--line);
+            text-align: center;
+        }
+
+        .token-core strong {
+            display: block;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 1.9rem;
+        }
+
+        .token-core span,
+        .mini-note,
+        .muted {
+            color: var(--muted);
+        }
+
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .mini-card {
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1.04fr 0.96fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .panel {
+            padding: 24px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .panel-title-wrap p {
+            margin: 8px 0 0;
+            color: var(--muted);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.05);
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .field {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .field.full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            color: var(--muted);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 14px 16px;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.04);
+            font: inherit;
+            outline: none;
+            transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--line-strong);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 0 4px rgba(105, 183, 255, 0.08);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 104px;
+        }
+
+        .helper {
+            margin: 2px 0 0;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .button-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+
+        .status {
+            margin-top: 16px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(105, 183, 255, 0.08);
+            border: 1px solid rgba(105, 183, 255, 0.18);
+            color: #cde7ff;
+        }
+
+        .status.success {
+            background: rgba(136, 241, 199, 0.09);
+            border-color: rgba(136, 241, 199, 0.18);
+            color: #d8ffee;
+        }
+
+        .status.warning {
+            background: rgba(255, 207, 115, 0.09);
+            border-color: rgba(255, 207, 115, 0.18);
+            color: #ffe7b8;
+        }
+
+        .proposal-list {
+            display: grid;
+            gap: 16px;
+        }
+
+        .proposal-card {
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .proposal-card::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 4px;
+            background: linear-gradient(180deg, var(--cyan), var(--mint));
+        }
+
+        .proposal-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 14px;
+        }
+
+        .proposal-id {
+            color: var(--cyan);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .proposal-desc {
+            color: var(--muted);
+            margin: 8px 0 16px;
+            line-height: 1.65;
+        }
+
+        .pill-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .pill {
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--muted);
+            font-size: 0.84rem;
+        }
+
+        .vote-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .vote-box {
+            padding: 14px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .vote-box span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.84rem;
+            margin-bottom: 6px;
+        }
+
+        .vote-box strong {
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 1.5rem;
+        }
+
+        .vote-for strong {
+            color: var(--mint);
+        }
+
+        .vote-against strong {
+            color: var(--rose);
+        }
+
+        .proposal-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .proposal-actions .btn {
+            flex: 1 1 150px;
+        }
+
+        .btn-vote {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            border: 1px solid var(--line);
+        }
+
+        .btn-approve {
+            background: linear-gradient(135deg, rgba(136, 241, 199, 0.95), rgba(109, 226, 255, 0.95));
+            color: #05131f;
+        }
+
+        .btn-reject {
+            background: linear-gradient(135deg, rgba(255, 140, 163, 0.94), rgba(255, 207, 115, 0.9));
+            color: #241114;
+        }
+
+        .workflow-card {
+            padding: 24px;
+            margin-top: 24px;
+        }
+
+        .workflow-list {
+            display: grid;
+            gap: 14px;
+            margin-top: 18px;
+        }
+
+        .workflow-step {
+            display: grid;
+            grid-template-columns: 40px 1fr;
+            gap: 14px;
+            align-items: start;
+        }
+
+        .workflow-step strong {
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            font-family: "Space Grotesk", sans-serif;
+            background: rgba(109, 226, 255, 0.1);
+            border: 1px solid rgba(109, 226, 255, 0.15);
+            color: var(--cyan);
+        }
+
+        .workflow-step p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        footer {
+            text-align: center;
+            padding: 26px 10px 8px;
+            color: var(--muted);
+        }
+
+        footer strong {
+            display: block;
+            color: var(--text);
+            margin-bottom: 6px;
+            font-family: "Space Grotesk", sans-serif;
+        }
+
+        @media (max-width: 1040px) {
+            .hero,
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-stats,
+            .form-grid,
+            .vote-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav {
+                border-radius: 28px;
+                padding: 16px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .wallet,
+            .brand,
+            .nav-links {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .shell {
+                width: min(100% - 20px, 1180px);
+                padding-top: 14px;
+            }
+
+            .hero-card,
+            .panel,
+            .side-card,
+            .workflow-card,
+            .proposal-card {
+                padding: 20px;
+                border-radius: 20px;
+            }
+
+            h1 {
+                max-width: none;
+            }
+
+            .button-row,
+            .proposal-actions,
+            .hero-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <nav class="nav">
+            <div class="brand">
+                <div class="brand-badge">D5</div>
+                <div>
+                    <div>Governance DAO</div>
+                    <div class="muted" style="font-size:0.84rem;">Assignment 5 showcase dashboard</div>
+                </div>
+            </div>
+
+            <div class="nav-links">
+                <a class="nav-link active" href="#overview">Overview</a>
+                <a class="nav-link" href="#create">Create Proposal</a>
+                <a class="nav-link" href="#proposals">Live Proposals</a>
+                <a class="nav-link" href="#workflow">Workflow</a>
+            </div>
+
+            <div class="wallet">
+                <span class="wallet-dot"></span>
+                <span>Wallet ready • Sepolia DAO Lab</span>
+            </div>
+        </nav>
+
+        <section class="hero" id="overview">
+            <article class="hero-card">
+                <div class="eyebrow">On-chain Governance Layer</div>
+                <h1>Modern DAO control for transparent fund release.</h1>
+                <p class="hero-copy">
+                    This dashboard presents the Assignment 5 DAO workflow as a clean, screenshot-ready governance interface.
+                    It highlights proposal creation, token-weighted voting, quorum checks, and execution in a format that looks much closer to a modern Web3 product.
+                </p>
+
+                <div class="hero-actions">
+                    <a href="#create" class="btn btn-primary">Create Proposal</a>
+                    <a href="#proposals" class="btn btn-secondary">Review Active Votes</a>
+                </div>
+
+                <div class="hero-stats">
+                    <div class="metric">
+                        <div class="metric-label">Voting Window</div>
+                        <div class="metric-value">2 min</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Minimum Quorum</div>
+                        <div class="metric-value">2 votes</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Governance Mode</div>
+                        <div class="metric-value">Snapshot</div>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="side-stack">
+                <div class="side-card">
+                    <p class="muted" style="margin:0;">Your governance balance</p>
+                    <div class="token-ring">
+                        <div class="token-core">
+                            <div>
+                                <strong id="tokenBalance">120</strong>
+                                <span>tokens</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mini-note">Enough voting power to create proposals and participate in treasury decisions.</p>
+                </div>
+
+                <div class="side-card">
+                    <h3 style="margin-bottom:10px;">DAO health snapshot</h3>
+                    <div class="mini-grid">
+                        <div class="mini-card">
+                            <div class="muted" style="font-size:0.82rem;">Open proposals</div>
+                            <strong style="font-family:'Space Grotesk',sans-serif; font-size:1.3rem;">3</strong>
+                        </div>
+                        <div class="mini-card">
+                            <div class="muted" style="font-size:0.82rem;">Treasury actions</div>
+                            <strong style="font-family:'Space Grotesk',sans-serif; font-size:1.3rem;">11</strong>
+                        </div>
+                        <div class="mini-card">
+                            <div class="muted" style="font-size:0.82rem;">Participation</div>
+                            <strong style="font-family:'Space Grotesk',sans-serif; font-size:1.3rem;">84%</strong>
+                        </div>
+                        <div class="mini-card">
+                            <div class="muted" style="font-size:0.82rem;">Latest result</div>
+                            <strong style="font-family:'Space Grotesk',sans-serif; font-size:1.3rem;">Passed</strong>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="layout">
+            <div>
+                <article class="panel" id="create">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <h2>Create Fund Release Proposal</h2>
+                            <p>Launch a new governance vote with campaign selection, rationale, and voter snapshot setup.</p>
+                        </div>
+                        <div class="badge">Snapshot voting enabled</div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="daoCampaignSelect">Campaign</label>
+                            <select id="daoCampaignSelect">
+                                <option>Campaign #01 • Education Relief Fund</option>
+                                <option>Campaign #02 • Rural Health Wallet</option>
+                                <option>Campaign #03 • Women Safety Initiative</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label for="grantAmount">Quorum Check</label>
+                            <input id="grantAmount" type="text" value="2 minimum votes" readonly>
+                        </div>
+
+                        <div class="field full">
+                            <label for="proposalDescription">Proposal Description</label>
+                            <textarea id="proposalDescription">Release funds for Education Relief Fund because the target has been reached and all supporting IPFS documents have been verified by the DAO community.</textarea>
+                        </div>
+
+                        <div class="field full">
+                            <label for="proposalVoters">Voter Addresses</label>
+                            <textarea id="proposalVoters">0x8A12...91Fb, 0xC102...A44E, 0x5D91...71B3</textarea>
+                            <p class="helper">Only token holders included here will receive proposal snapshot voting power.</p>
+                        </div>
+                    </div>
+
+                    <div class="button-row">
+                        <button class="btn btn-primary" id="createProposalBtn">Create Proposal</button>
+                        <button class="btn btn-secondary" id="grantTokenBtn">Grant Tokens</button>
+                    </div>
+
+                    <div class="status success" id="proposalStatus">
+                        Ready for lab demo: create a proposal, collect votes, then execute after deadline.
+                    </div>
+                </article>
+
+                <article class="workflow-card" id="workflow">
+                    <h2>DAO Workflow</h2>
+                    <div class="workflow-list">
+                        <div class="workflow-step">
+                            <strong>1</strong>
+                            <div>
+                                <h3>Deploy core contracts</h3>
+                                <p>Deploy <code>DonationContract.sol</code> first, then deploy <code>GovernanceDAO.sol</code> using the donation contract address.</p>
+                            </div>
+                        </div>
+                        <div class="workflow-step">
+                            <strong>2</strong>
+                            <div>
+                                <h3>Authorize DAO control</h3>
+                                <p>Call <code>setAuthorizedDAO()</code> so approved proposals can trigger fund release safely from the DAO contract.</p>
+                            </div>
+                        </div>
+                        <div class="workflow-step">
+                            <strong>3</strong>
+                            <div>
+                                <h3>Grant tokens and create proposal</h3>
+                                <p>Distribute governance tokens, choose an active campaign, then create a proposal with a snapshot of voter balances.</p>
+                            </div>
+                        </div>
+                        <div class="workflow-step">
+                            <strong>4</strong>
+                            <div>
+                                <h3>Vote and execute</h3>
+                                <p>After quorum and deadline, execute the proposal. If it passes, the beneficiary receives campaign funds on-chain.</p>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <div>
+                <article class="panel" id="proposals">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <h2>Active Proposals</h2>
+                            <p>Polished proposal cards suitable for screenshots of voting and execution flow.</p>
+                        </div>
+                        <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
+                    </div>
+
+                    <div class="proposal-list" id="proposalList">
+                        <div class="proposal-card">
+                            <div class="proposal-top">
+                                <div>
+                                    <div class="proposal-id">Proposal #01</div>
+                                    <h3>Release campaign treasury after goal completion</h3>
+                                </div>
+                                <div class="badge">Ends in 01:24</div>
+                            </div>
+
+                            <p class="proposal-desc">
+                                Campaign #01 has crossed its fundraising target and required supporting documents were uploaded through IPFS. The DAO is now voting on treasury release to the verified beneficiary.
+                            </p>
+
+                            <div class="pill-row">
+                                <div class="pill">Campaign #01</div>
+                                <div class="pill">Snapshot locked</div>
+                                <div class="pill">Quorum reached</div>
+                            </div>
+
+                            <div class="vote-grid">
+                                <div class="vote-box vote-for">
+                                    <span>Votes For</span>
+                                    <strong>78</strong>
+                                </div>
+                                <div class="vote-box vote-against">
+                                    <span>Votes Against</span>
+                                    <strong>14</strong>
+                                </div>
+                            </div>
+
+                            <div class="proposal-actions">
+                                <button class="btn btn-approve btn-vote">Vote For</button>
+                                <button class="btn btn-reject btn-vote">Vote Against</button>
+                                <button class="btn btn-secondary">Execute</button>
+                            </div>
+                        </div>
+
+                        <div class="proposal-card">
+                            <div class="proposal-top">
+                                <div>
+                                    <div class="proposal-id">Proposal #02</div>
+                                    <h3>Pending review for second campaign release</h3>
+                                </div>
+                                <div class="badge">Ends in 00:39</div>
+                            </div>
+
+                            <p class="proposal-desc">
+                                This proposal is still under debate because the campaign reached only partial target funding. Community members are deciding whether the documented emergency need justifies release.
+                            </p>
+
+                            <div class="pill-row">
+                                <div class="pill">Campaign #02</div>
+                                <div class="pill">Needs 1 more voter</div>
+                            </div>
+
+                            <div class="vote-grid">
+                                <div class="vote-box vote-for">
+                                    <span>Votes For</span>
+                                    <strong>32</strong>
+                                </div>
+                                <div class="vote-box vote-against">
+                                    <span>Votes Against</span>
+                                    <strong>29</strong>
+                                </div>
+                            </div>
+
+                            <div class="proposal-actions">
+                                <button class="btn btn-approve btn-vote">Vote For</button>
+                                <button class="btn btn-reject btn-vote">Vote Against</button>
+                                <button class="btn btn-secondary">Execute</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="status warning" id="daoStatus">
+                        Admin tools are enabled for token distribution and governance setup. Use this page as a clean visual companion for Assignment 5 screenshots.
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <footer>
+            <strong>Assignment 5 • DAO Smart Contract</strong>
+            Modern single-page interface for proposal creation, token-weighted voting, and execution presentation.
+        </footer>
+    </div>
+
+    <script>
+        const proposalStatus = document.getElementById("proposalStatus");
+        const daoStatus = document.getElementById("daoStatus");
+        const createBtn = document.getElementById("createProposalBtn");
+        const grantBtn = document.getElementById("grantTokenBtn");
+        const refreshBtn = document.getElementById("refreshBtn");
+        const voteButtons = document.querySelectorAll(".btn-vote");
+
+        createBtn.addEventListener("click", () => {
+            proposalStatus.className = "status success";
+            proposalStatus.textContent = "Proposal draft prepared successfully. Take a screenshot here for the proposal creation step.";
+        });
+
+        grantBtn.addEventListener("click", () => {
+            daoStatus.className = "status success";
+            daoStatus.textContent = "Governance tokens granted to the selected voter list. This state works well for admin/setup screenshots.";
+        });
+
+        refreshBtn.addEventListener("click", () => {
+            daoStatus.className = "status";
+            daoStatus.textContent = "Proposal board refreshed. Vote counts and execution state can now be presented for your lab screenshots.";
+        });
+
+        voteButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                daoStatus.className = "status success";
+                daoStatus.textContent = button.textContent + " recorded in the demo interface. Capture this section for the voting screenshot if needed.";
+            });
+        });
+    </script>
+</body>
+</html>

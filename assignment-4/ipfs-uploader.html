@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignment 4 - IPFS Uploader</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@4.5.0/dist/web3.min.js"></script>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --panel: #141b34;
+            --panel-2: #1c2547;
+            --text: #eef2ff;
+            --muted: #a5b4fc;
+            --accent: #22c55e;
+            --accent-2: #60a5fa;
+            --border: rgba(148, 163, 184, 0.25);
+            --danger: #f87171;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(160deg, var(--bg), #111827 55%, #0f172a);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 32px 20px 48px;
+        }
+
+        h1, h2 {
+            margin-top: 0;
+        }
+
+        .intro {
+            background: rgba(20, 27, 52, 0.92);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: rgba(20, 27, 52, 0.94);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 700;
+            margin: 14px 0 8px;
+        }
+
+        input, button {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 12px 14px;
+            font-size: 14px;
+        }
+
+        input {
+            background: var(--panel-2);
+            color: var(--text);
+        }
+
+        button {
+            margin-top: 16px;
+            background: linear-gradient(90deg, var(--accent-2), var(--accent));
+            color: #04111f;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button.secondary {
+            background: transparent;
+            color: var(--text);
+        }
+
+        .status {
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 12px;
+            background: rgba(96, 165, 250, 0.12);
+            border: 1px solid rgba(96, 165, 250, 0.28);
+            white-space: pre-wrap;
+        }
+
+        .status.error {
+            background: rgba(248, 113, 113, 0.12);
+            border-color: rgba(248, 113, 113, 0.3);
+            color: #fecaca;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        a {
+            color: #93c5fd;
+        }
+
+        code {
+            font-family: Consolas, monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <section class="intro">
+            <h1>Assignment 4 - IPFS Integration</h1>
+            <p class="muted">Upload a file to IPFS with Pinata, retrieve it from a public gateway, and optionally store the CID on-chain through MetaMask.</p>
+        </section>
+
+        <div class="grid">
+            <section class="card">
+                <h2>1. Upload To IPFS</h2>
+                <label for="pinataJwt">Pinata JWT</label>
+                <input id="pinataJwt" type="password" placeholder="Paste your Pinata Bearer JWT">
+
+                <label for="uploadFile">Choose File</label>
+                <input id="uploadFile" type="file">
+
+                <button id="uploadBtn">Upload File</button>
+                <div id="uploadStatus" class="status muted">Upload status will appear here.</div>
+            </section>
+
+            <section class="card">
+                <h2>2. Retrieve From IPFS</h2>
+                <label for="cidInput">CID</label>
+                <input id="cidInput" type="text" placeholder="Paste uploaded CID">
+
+                <button id="openCidBtn" class="secondary">Open CID In Gateway</button>
+                <div id="retrieveStatus" class="status muted">Gateway link will appear here.</div>
+            </section>
+
+            <section class="card">
+                <h2>3. Store CID On-Chain</h2>
+                <label for="studentId">Student ID / Roll Number</label>
+                <input id="studentId" type="text" placeholder="123B1B055">
+
+                <label for="contractAddress">Registry Contract Address</label>
+                <input id="contractAddress" type="text" placeholder="Paste deployed StudentIPFSRegistry address">
+
+                <button id="connectBtn" class="secondary">Connect MetaMask</button>
+                <button id="storeBtn">Store CID On-Chain</button>
+                <div id="chainStatus" class="status muted">MetaMask transaction status will appear here.</div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const registryAbi = [
+            {
+                "inputs": [
+                    { "internalType": "string", "name": "studentId", "type": "string" },
+                    { "internalType": "string", "name": "cid", "type": "string" }
+                ],
+                "name": "submitSubmission",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];
+
+        let web3;
+        let account;
+
+        const uploadStatus = document.getElementById('uploadStatus');
+        const retrieveStatus = document.getElementById('retrieveStatus');
+        const chainStatus = document.getElementById('chainStatus');
+
+        function setStatus(element, message, isError = false) {
+            element.textContent = message;
+            element.className = isError ? 'status error' : 'status';
+        }
+
+        async function connectWallet() {
+            if (!window.ethereum) {
+                setStatus(chainStatus, 'MetaMask not detected. Install it first.', true);
+                return;
+            }
+
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                web3 = new Web3(window.ethereum);
+                account = accounts[0];
+                setStatus(chainStatus, `Connected wallet: ${account}`);
+            } catch (error) {
+                setStatus(chainStatus, `Wallet connection failed: ${error.message}`, true);
+            }
+        }
+
+        async function uploadToPinata() {
+            const jwt = document.getElementById('pinataJwt').value.trim();
+            const file = document.getElementById('uploadFile').files[0];
+
+            if (!jwt) {
+                setStatus(uploadStatus, 'Pinata JWT is required.', true);
+                return;
+            }
+
+            if (!file) {
+                setStatus(uploadStatus, 'Please choose a file first.', true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            setStatus(uploadStatus, 'Uploading file to Pinata...');
+
+            try {
+                const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${jwt}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'Upload failed');
+                }
+
+                const data = await response.json();
+                const cid = data.IpfsHash;
+                document.getElementById('cidInput').value = cid;
+                setStatus(uploadStatus, `Upload successful.\nCID: ${cid}\nGateway: https://ipfs.io/ipfs/${cid}`);
+            } catch (error) {
+                setStatus(uploadStatus, `Upload failed: ${error.message}`, true);
+            }
+        }
+
+        function openCid() {
+            const cid = document.getElementById('cidInput').value.trim();
+            if (!cid) {
+                setStatus(retrieveStatus, 'Enter a CID first.', true);
+                return;
+            }
+
+            const url = `https://ipfs.io/ipfs/${cid}`;
+            setStatus(retrieveStatus, `Open this link:\n${url}`);
+            window.open(url, '_blank');
+        }
+
+        async function storeCidOnChain() {
+            const cid = document.getElementById('cidInput').value.trim();
+            const studentId = document.getElementById('studentId').value.trim();
+            const contractAddress = document.getElementById('contractAddress').value.trim();
+
+            if (!studentId || !cid || !contractAddress) {
+                setStatus(chainStatus, 'Student ID, CID, and contract address are required.', true);
+                return;
+            }
+
+            if (!web3 || !account) {
+                await connectWallet();
+                if (!web3 || !account) return;
+            }
+
+            try {
+                const contract = new web3.eth.Contract(registryAbi, contractAddress);
+                setStatus(chainStatus, 'Sending transaction to store CID on-chain...');
+                const receipt = await contract.methods.submitSubmission(studentId, cid).send({ from: account });
+                setStatus(chainStatus, `CID stored successfully.\nTransaction hash: ${receipt.transactionHash}`);
+            } catch (error) {
+                setStatus(chainStatus, `Transaction failed: ${error.message}`, true);
+            }
+        }
+
+        document.getElementById('connectBtn').addEventListener('click', connectWallet);
+        document.getElementById('uploadBtn').addEventListener('click', uploadToPinata);
+        document.getElementById('openCidBtn').addEventListener('click', openCid);
+        document.getElementById('storeBtn').addEventListener('click', storeCidOnChain);
+    </script>
+</body>
+</html>
