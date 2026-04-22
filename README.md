@@ -4,9 +4,9 @@ Public GitHub repository for Blockchain Technology lab submissions.
 
 ## Student Details
 
-- Student Name: Harshal
+- Student Name: Harshal Narendra Patil
 - Roll Number: 123B1B055
-- Course: Blockchain Technology Lab
+- Course: Blockchain Technology Laboratory
 - Semester: Sem 6
 
 ## Repository Structure
@@ -79,7 +79,3 @@ DAO governance contract for proposal creation, token-based voting, and fund-rele
 4. Use the DAO flow to create proposal, vote, and execute.
 5. Save DAO screenshots in `assignment-5/screenshots/`.
 
-## Notes
-
-- Screenshot folders are ready; add the final screenshots before uploading to GitHub.
-- Assignment titles can be renamed later if your teacher gave exact official names.
